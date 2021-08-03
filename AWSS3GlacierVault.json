@@ -1,0 +1,310 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Archival document storage in Amazon Glacier via S3",
+    "Parameters": {
+        "BucketName": {
+            "Description": "S3 bucket name",
+            "Type": "String"
+        },
+        "NotificationEmail": {
+            "Description": "Email to use for S3 deletion notifications",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "SNSTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "DisplayName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            {
+                                "Ref": "BucketName"
+                            },
+                            "-deletions"
+                        ]
+                    ]
+                },
+                "Subscription": [
+                    {
+                        "Protocol": "email",
+                        "Endpoint": {
+                            "Ref": "NotificationEmail"
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "98e4ecae-63d3-4d69-b222-1641f0f50e9a"
+                }
+            }
+        },
+        "SNSTopicPolicy": {
+            "Type": "AWS::SNS::TopicPolicy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Id": "S3BucketPolicy",
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "s3.amazonaws.com"
+                            },
+                            "Action": [
+                                "SNS:Publish"
+                            ],
+                            "Resource": "*",
+                            "Condition": {
+                                "ArnLike": {
+                                    "aws:SourceArn": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:s3:*:*:",
+                                                {
+                                                    "Ref": "BucketName"
+                                                }
+                                            ]
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "Topics": [
+                    {
+                        "Ref": "SNSTopic"
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "2f1a1b51-ea12-4229-9c9a-1c40eff55e67"
+                }
+            }
+        },
+        "S3Bucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "BucketName": {
+                    "Ref": "BucketName"
+                },
+                "LifecycleConfiguration": {
+                    "Rules": [
+                        {
+                            "Id": "GlacierArchive",
+                            "Status": "Enabled",
+                            "Transitions": [
+                                {
+                                    "StorageClass": "GLACIER",
+                                    "TransitionInDays": 0
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "NotificationConfiguration": {
+                    "TopicConfigurations": [
+                        {
+                            "Event": "s3:ObjectRemoved:Delete",
+                            "Topic": {
+                                "Ref": "SNSTopic"
+                            }
+                        }
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "37e29f51-03f6-4625-8f69-a56553e1ee75"
+                }
+            }
+        },
+        "IAMP439F3": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "CFNUsers",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "deny-based-on-archive-age",
+                            "Principal": "*",
+                            "Effect": "Deny",
+                            "Action": "glacier:DeleteArchive",
+                            "Resource": [
+                                "arn:aws:glacier:us-west2:123456789012:vaults/examplevault"
+                            ],
+                            "Condition": {
+                                "NumericLessThan": {
+                                    "glacier:ArchiveAgeInDays": "365"
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            "Groups": [
+                {
+                    "Ref": "CFNUserGroup"
+                }
+            ],
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "247459a4-5080-4053-b23c-7b1b2f58e943"
+                }
+            }
+        },
+        "Metadata": {
+            "AWS::CloudFormation::Designer": {
+                "id": "773f1692-1f69-447c-8018-e7af4a8325e6"
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "02f89c1b-f820-4820-8294-f7d8bede31a6"
+                }
+            }
+        }
+    },
+    "Metadata": {
+        "AWS::CloudFormation::Designer": {
+            "02f89c1b-f820-4820-8294-f7d8bede31a6": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 60,
+                    "y": 90
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "247459a4-5080-4053-b23c-7b1b2f58e943": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 180,
+                    "y": 90
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "98e4ecae-63d3-4d69-b222-1641f0f50e9a": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 60,
+                    "y": 210
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "37e29f51-03f6-4625-8f69-a56553e1ee75": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 180,
+                    "y": 210
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "2f1a1b51-ea12-4229-9c9a-1c40eff55e67": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 300,
+                    "y": 90
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "98e4ecae-63d3-4d69-b222-1641f0f50e9a"
+                ]
+            }
+        },
+        "Metadata": {
+            "AWS::CloudFormation::Designer": {
+                "id": "170a635a-54f2-40a1-83da-89a35ecfea1c"
+            }
+        }
+    },
+    "AWS::CloudFormation::Designer": {
+        "98e4ecae-63d3-4d69-b222-1641f0f50e9a": {
+            "size": {
+                "width": 60,
+                "height": 60
+            },
+            "position": {
+                "x": 60,
+                "y": 90
+            },
+            "z": 1,
+            "embeds": []
+        },
+        "37e29f51-03f6-4625-8f69-a56553e1ee75": {
+            "size": {
+                "width": 60,
+                "height": 60
+            },
+            "position": {
+                "x": 180,
+                "y": 90
+            },
+            "z": 1,
+            "embeds": []
+        },
+        "2f1a1b51-ea12-4229-9c9a-1c40eff55e67": {
+            "size": {
+                "width": 60,
+                "height": 60
+            },
+            "position": {
+                "x": 60,
+                "y": 210
+            },
+            "z": 1,
+            "embeds": [],
+            "isassociatedwith": [
+                "98e4ecae-63d3-4d69-b222-1641f0f50e9a"
+            ]
+        },
+        "170a635a-54f2-40a1-83da-89a35ecfea1c": {
+            "size": {
+                "width": 60,
+                "height": 60
+            },
+            "position": {
+                "x": 270,
+                "y": 90
+            },
+            "z": 1,
+            "embeds": []
+        },
+        "773f1692-1f69-447c-8018-e7af4a8325e6": {
+            "size": {
+                "width": 60,
+                "height": 60
+            },
+            "position": {
+                "x": 190,
+                "y": 180
+            },
+            "z": 1,
+            "embeds": []
+        }
+    }
+}
