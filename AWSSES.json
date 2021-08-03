@@ -1,0 +1,228 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Example using the Custom::SES_Domain CloudFormation custom resource type to provision an Amazon SES domain identity and maintain necessary DNS records in Route53\n",
+    "Parameters": {
+        "Domain": {
+            "Type": "String",
+            "Description": "The domain name you want to provision for Amazon SES (e.g., \"corp.example.com\").\n",
+            "Default": ""
+        },
+        "EmailAddress": {
+            "Type": "String",
+            "Description": "The email address you want to verify with Amazon SES (e.g., \"sender@example.com\").\n",
+            "Default": ""
+        },
+        "CfnSESResourcesTemplateURL": {
+            "Type": "String",
+            "Description": "The S3 url where you have uploaded your copy of aws-cfn-ses-domain.cf.yaml.\n",
+            "Default": "https://s3.amazonaws.com/YOUR_BUCKET_NAME/aws-cfn-ses-domain-VERSION.cf.yaml"
+        }
+    },
+    "Conditions": {
+        "DeployDomainExample": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "Domain"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        },
+        "DeployEmailExample": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "EmailAddress"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "CfnSESResources": {
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": {
+                    "Ref": "CfnSESResourcesTemplateURL"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "95d8f54b-50c3-4123-948f-6e84ce688582"
+                }
+            }
+        },
+        "MySESDomain": {
+            "Type": "Custom::SES_Domain",
+            "Condition": "DeployDomainExample",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "CfnSESResources",
+                        "Outputs",
+                        "CustomDomainIdentityArn"
+                    ]
+                },
+                "Domain": {
+                    "Ref": "Domain"
+                },
+                "EnableReceive": true,
+                "EnableSend": true,
+                "MailFromSubdomain": "mail",
+                "TTL": "1800",
+                "CustomDMARC": "\"v=DMARC1; p=none; pct=100; sp=none; aspf=r;\"",
+                "Region": {
+                    "Ref": "AWS::Region"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "78a1d249-f575-40ad-88a8-2aabd086255a"
+                }
+            }
+        },
+        "MyRoute53Records": {
+            "Type": "AWS::Route53::RecordSetGroup",
+            "Condition": "DeployDomainExample",
+            "Properties": {
+                "HostedZoneName": {
+                    "Fn::Sub": "${Domain}."
+                },
+                "RecordSets": {
+                    "Fn::GetAtt": [
+                        "MySESDomain",
+                        "Route53RecordSets"
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "62a7119d-5d0c-4e8d-b86b-73314ef296c7"
+                }
+            }
+        },
+        "MySESEmail": {
+            "Type": "Custom::SES_EmailIdentity",
+            "Condition": "DeployEmailExample",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "CfnSESResources",
+                        "Outputs",
+                        "CustomEmailIdentityArn"
+                    ]
+                },
+                "EmailAddress": {
+                    "Ref": "EmailAddress"
+                },
+                "Region": {
+                    "Ref": "AWS::Region"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "b5897bb3-778d-4f6d-ba1d-1ed254ad92e9"
+                }
+            }
+        },
+        "SESRR3VMF4": {
+            "Type": "AWS::SES::ReceiptRule",
+            "Properties": {
+                "BucketName": "String",
+                "KmsKeyArn": "String",
+                "ObjectKeyPrefix": "String",
+                "TopicArn": "String"
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "d0c3ec01-825d-4d3e-9273-90efadf65a48"
+                }
+            },
+            "DependsOn": [
+                "MySESDomain"
+            ]
+        }
+    },
+    "Metadata": {
+        "AWS::CloudFormation::Designer": {
+            "95d8f54b-50c3-4123-948f-6e84ce688582": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 60,
+                    "y": 90
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "b5897bb3-778d-4f6d-ba1d-1ed254ad92e9": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 180,
+                    "y": 90
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "78a1d249-f575-40ad-88a8-2aabd086255a": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 60,
+                    "y": 210
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "62a7119d-5d0c-4e8d-b86b-73314ef296c7": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 180,
+                    "y": 210
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "d0c3ec01-825d-4d3e-9273-90efadf65a48": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": -40,
+                    "y": 210
+                },
+                "z": 0,
+                "embeds": [],
+                "dependson": [
+                    "78a1d249-f575-40ad-88a8-2aabd086255a"
+                ]
+            },
+            "87d58d80-6f54-4072-a24b-70ded5e0b30f": {
+                "source": {
+                    "id": "d0c3ec01-825d-4d3e-9273-90efadf65a48"
+                },
+                "target": {
+                    "id": "78a1d249-f575-40ad-88a8-2aabd086255a"
+                },
+                "z": 2
+            }
+        }
+    }
+}
